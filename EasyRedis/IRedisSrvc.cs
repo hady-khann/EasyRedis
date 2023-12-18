@@ -3,7 +3,7 @@
 namespace EasyRedis;
 public interface IRedisSrvc
 {
-    #region MyMethods
+    void Dispose();
     T? HashGet<T>(RedisDbEnum dbNumber, string key, string hashField);
     T? HashGetAll<T>(RedisDbEnum dbNumber, string key);
     Task<T?> HashGetAllAsync<T>(RedisDbEnum dbNumber, string key);
@@ -28,11 +28,20 @@ public interface IRedisSrvc
     Task<bool> KeyMoveAsync(RedisDbEnum srcDbNumber, RedisDbEnum destDbNumber, string key);
     TimeSpan? KeyTimeToLive(RedisDbEnum dbNumber, string key);
     Task<TimeSpan?> KeyTimeToLiveAsync(RedisDbEnum dbNumber, string key);
+    bool SetAdd(RedisDbEnum dbNumber, string key, object value);
+    Task<bool> SetAddAsync(RedisDbEnum dbNumber, string key, object value);
     T? SetAndGet<T>(RedisDbEnum dbNumber, string key, object value);
     Task<T?> SetAndGetAsync<T>(RedisDbEnum dbNumber, string key, object value);
+    long SetLength(RedisDbEnum dbNumber, string key);
+    Task<long> SetLengthAsync(RedisDbEnum dbNumber, string key);
+    RedisValue[] SetMembers(RedisDbEnum dbNumber, string key, object value);
+    Task<RedisValue[]> SetMembersAsync(RedisDbEnum dbNumber, string key, object value);
+    bool SetMove(RedisDbEnum dbNumber, string srcKey, string destKey, object value);
+    Task<bool> SetMoveAsync(RedisDbEnum dbNumber, string srcKey, string destKey, object value);
+    string SetPop(RedisDbEnum dbNumber, string srcKey);
+    Task<string> SetPopAsync(RedisDbEnum dbNumber, string srcKey);
     T? StringGet<T>(RedisDbEnum dbNumber, string key);
     Task<T?> StringGetAsync<T>(RedisDbEnum dbNumber, string key);
     bool StringSet(RedisDbEnum dbNumber, string key, object value);
     Task<bool> StringSetAsync(RedisDbEnum dbNumber, string key, object value);
-    #endregion
 }

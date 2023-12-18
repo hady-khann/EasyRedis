@@ -14,19 +14,23 @@ public class RedisSrvc : IRedisSrvc
     public RedisSrvc(IConfiguration configuration, IDatabase redisDefults)
     {
         _configuration = configuration;
+        _redisConnection = ConnectionMultiplexer.Connect(GetRedisConfiguration());
+        _redisDefults = redisDefults;
+    }
 
-        ConfigurationOptions config = new ConfigurationOptions
+    private ConfigurationOptions GetRedisConfiguration()
+    {
+        var config = new ConfigurationOptions
         {
-            EndPoints = { _configuration["Easy:Redis:EndPoints"] },
-            Password = _configuration["Easy:Redis:Password"],
-            ConnectTimeout = int.Parse(_configuration["Easy:Redis:ConnectTimeout"]),
-            AbortOnConnectFail = bool.Parse(_configuration["Easy:Redis:AbortOnConnectFail"]),
-            Ssl = bool.Parse(_configuration["Easy:Redis:Ssl"]),
-            AllowAdmin = bool.Parse(_configuration["Easy:Redis:AllowAdmin"])
+            EndPoints = { _configuration["EasyRedis:EndPoints"] },
+            Password = _configuration["EasyRedis:Password"],
+            ConnectTimeout = int.Parse(_configuration["EasyRedis:ConnectTimeout"]),
+            AbortOnConnectFail = bool.Parse(_configuration["EasyRedis:AbortOnConnectFail"]),
+            Ssl = bool.Parse(_configuration["EasyRedis:Ssl"]),
+            AllowAdmin = bool.Parse(_configuration["EasyRedis:AllowAdmin"])
         };
 
-        _redisConnection = ConnectionMultiplexer.Connect(config);
-        _redisDefults = redisDefults;
+        return config;
     }
 
     #region Basic Operstions
@@ -715,6 +719,10 @@ public class RedisSrvc : IRedisSrvc
 
     #endregion
 
+    public void Dispose()
+    {
+        _redisConnection?.Dispose();
+    }
 
     #region privates
 
@@ -727,6 +735,7 @@ public class RedisSrvc : IRedisSrvc
     {
         return _configuration[$"Easy:Redis:LifeTime:{dbNumber}"]!;
     }
+
 
     #endregion
 
