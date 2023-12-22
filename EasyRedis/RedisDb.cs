@@ -1,6 +1,7 @@
 ﻿namespace EasyRedis;
-public enum RedisDbEnum
+public enum RedisDb
 {
+    DbDefult = -1,
     Db0 = 0,
     Db1 = 1,
     Db2 = 2,

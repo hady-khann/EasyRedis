@@ -3,7 +3,9 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 17
 VisualStudioVersion = 17.0.31903.59
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "EasyRedis", "EasyRedis\EasyRedis.csproj", "{389E2E8C-7285-40B8-9ECF-C09EC615D605}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "EasyRedis", "EasyRedis\EasyRedis.csproj", "{389E2E8C-7285-40B8-9ECF-C09EC615D605}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TryEasyRedis", "TryEasyRedis\TryEasyRedis.csproj", "{6B0E9470-7A20-499F-9DBD-96DBF9DF95B7}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -15,6 +17,10 @@ Global
 		{389E2E8C-7285-40B8-9ECF-C09EC615D605}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{389E2E8C-7285-40B8-9ECF-C09EC615D605}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{389E2E8C-7285-40B8-9ECF-C09EC615D605}.Release|Any CPU.Build.0 = Release|Any CPU
+		{6B0E9470-7A20-499F-9DBD-96DBF9DF95B7}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{6B0E9470-7A20-499F-9DBD-96DBF9DF95B7}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{6B0E9470-7A20-499F-9DBD-96DBF9DF95B7}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{6B0E9470-7A20-499F-9DBD-96DBF9DF95B7}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

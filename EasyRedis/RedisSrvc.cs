@@ -3,35 +3,10 @@ using Newtonsoft.Json;
 using StackExchange.Redis;
 
 namespace EasyRedis;
-public class RedisSrvc : IRedisSrvc
+public class RedisSrvc : BaseRedis, IRedisSrvc
 {
+    public RedisSrvc(IConfiguration configuration) : base(configuration) { }
 
-    private ConnectionMultiplexer _redisConnection;
-    private readonly IConfiguration _configuration;
-    public readonly IDatabase _redisDefults;
-
-
-    public RedisSrvc(IConfiguration configuration, IDatabase redisDefults)
-    {
-        _configuration = configuration;
-        _redisConnection = ConnectionMultiplexer.Connect(GetRedisConfiguration());
-        _redisDefults = redisDefults;
-    }
-
-    private ConfigurationOptions GetRedisConfiguration()
-    {
-        var config = new ConfigurationOptions
-        {
-            EndPoints = { _configuration["EasyRedis:EndPoints"] },
-            Password = _configuration["EasyRedis:Password"],
-            ConnectTimeout = int.Parse(_configuration["EasyRedis:ConnectTimeout"]),
-            AbortOnConnectFail = bool.Parse(_configuration["EasyRedis:AbortOnConnectFail"]),
-            Ssl = bool.Parse(_configuration["EasyRedis:Ssl"]),
-            AllowAdmin = bool.Parse(_configuration["EasyRedis:AllowAdmin"])
-        };
-
-        return config;
-    }
 
     #region Basic Operstions
 
@@ -40,39 +15,31 @@ public class RedisSrvc : IRedisSrvc
     /// <summary>
     /// Set key to hold the string value. If key already holds a value, it is overwritten, regardless of its type.
     /// </summary>
-    /// <param name="dbNumber">database number Enum RedisDbEnum 0-15</param>
+    /// <param name="dbNumber">dbNumber Is Db 0 By Defult Except Change Defult In <see cref="ChangeDefultDb"/> </param>
     /// <param name="key">The key of the string.</param>
     /// <param name="value">The value to set.</param>
     /// <returns><see langword="true"/> if the string was set, <see langword="false"/> otherwise.</returns>
-    public bool StringSet(RedisDbEnum dbNumber, string key, object value)
+    public bool StringSet(string key, object value, RedisDb dbNumber = RedisDb.DbDefult)
     {
-        var redis = GetRedisDatabase(dbNumber);
-        var lifeTime = GetRedisLifetime(dbNumber);
+        GetRedisDatabase(dbNumber);
+        GetRedisLifetime(dbNumber);
 
-        if (!string.IsNullOrEmpty(lifeTime))
-        {
-            return redis.StringSet(key, JsonConvert.SerializeObject(value), TimeSpan.Parse(lifeTime));
-        }
-        return false;
+        return redis.StringSet(key, JsonConvert.SerializeObject(value), _lifeTime);
     }
 
     /// <summary>
     /// Set key to hold the string value. If key already holds a value, it is overwritten, regardless of its type.
     /// </summary>
-    /// <param name="dbNumber">database number Enum RedisDbEnum 0-15</param>
+    /// <param name="dbNumber">dbNumber Is Db 0 By Defult Except Change Defult In <see cref="ChangeDefultDb"/> </param>
     /// <param name="key">The key of the string.</param>
     /// <param name="value">The value to set.</param>
     /// <returns><see langword="true"/> if the string was set, <see langword="false"/> otherwise.</returns>
-    public async Task<bool> StringSetAsync(RedisDbEnum dbNumber, string key, object value)
+    public async Task<bool> StringSetAsync(string key, object value, RedisDb dbNumber = RedisDb.DbDefult)
     {
-        var redis = GetRedisDatabase(dbNumber);
-        var lifeTime = GetRedisLifetime(dbNumber);
+        GetRedisDatabase(dbNumber);
+        GetRedisLifetime(dbNumber);
 
-        if (!string.IsNullOrEmpty(lifeTime))
-        {
-            return await redis.StringSetAsync(key, JsonConvert.SerializeObject(value), TimeSpan.Parse(lifeTime));
-        }
-        return false;
+        return await redis.StringSetAsync(key, JsonConvert.SerializeObject(value), _lifeTime);
     }
 
     #endregion
@@ -83,13 +50,13 @@ public class RedisSrvc : IRedisSrvc
     /// Get the value of key. If the key does not exist the special value nil is returned.
     /// An error is returned if the value stored at key is not a string, because GET only handles string values.
     /// </summary>
-    /// <param name="dbNumber">database number Enum RedisDbEnum 0-15</param>
+    /// <param name="dbNumber">dbNumber Is Db 0 By Defult Except Change Defult In <see cref="ChangeDefultDb"/> </param>
     /// <param name="key">The key of the string.</param>
     /// <typeparam name="T">Type Of Object Stored In Db</typeparam>
     /// <returns>The value of key, or nil when key does not exist.</returns>
-    public T? StringGet<T>(RedisDbEnum dbNumber, string key)
+    public T StringGet<T>(string key, RedisDb dbNumber = RedisDb.DbDefult)
     {
-        var redis = GetRedisDatabase(dbNumber);
+        GetRedisDatabase(dbNumber);
         return JsonConvert.DeserializeObject<T>(redis.StringGet(key)!);
     }
 
@@ -97,13 +64,13 @@ public class RedisSrvc : IRedisSrvc
     /// Get the value of key. If the key does not exist the special value nil is returned.
     /// An error is returned if the value stored at key is not a string, because GET only handles string values.
     /// </summary>
-    /// <typeparam name="T">Type Of Object Stored In Db</typeparam>
-    /// <param name="dbNumber">database number Enum RedisDbEnum 0-15</param>
+    /// <param name="dbNumber">dbNumber Is Db 0 By Defult Except Change Defult In <see cref="ChangeDefultDb"/> </param>
     /// <param name="key">The key of the string.</param>
+    /// <typeparam name="T">Type Of Object Stored In Db</typeparam>
     /// <returns>The value of key, or nil when key does not exist.</returns>
-    public async Task<T?> StringGetAsync<T>(RedisDbEnum dbNumber, string key)
+    public async Task<T> StringGetAsync<T>(string key, RedisDb dbNumber = RedisDb.DbDefult)
     {
-        var redis = GetRedisDatabase(dbNumber);
+        GetRedisDatabase(dbNumber);
         return JsonConvert.DeserializeObject<T>((await redis.StringGetAsync(key))!);
     }
 
@@ -117,21 +84,16 @@ public class RedisSrvc : IRedisSrvc
     /// <param name="key">The key of the string.</param>
     /// <param name="value">The value to set.</param>
     /// <typeparam name="T">Type Of Object Stored In Db</typeparam>
-    /// <param name="dbNumber">database number Enum RedisDbEnum 0-15</param>
+    /// <param name="dbNumber">dbNumber Is Db 0 By Defult Except Change Defult In <see cref="ChangeDefultDb"/> </param>
     /// <returns>The previous value stored at <paramref name="key"/>, or nil when key did not exist.</returns>
-    public async Task<T?> SetAndGetAsync<T>(RedisDbEnum dbNumber, string key, object value)
+    public async Task<T> SetAndGetAsync<T>(string key, object value, RedisDb dbNumber = RedisDb.DbDefult)
     {
-        var redis = GetRedisDatabase(dbNumber);
-        var lifeTime = GetRedisLifetime(dbNumber);
+        GetRedisDatabase(dbNumber);
+        GetRedisLifetime(dbNumber);
 
-        if (!string.IsNullOrEmpty(lifeTime))
-        {
-            return JsonConvert.DeserializeObject<T>(
-                (await redis.StringSetAndGetAsync(key.ToString(), JsonConvert.SerializeObject(value), TimeSpan.Parse(lifeTime)))!
-                );
-        }
-
-        return default;
+        return JsonConvert.DeserializeObject<T>(
+            (await redis.StringSetAndGetAsync(key.ToString(), JsonConvert.SerializeObject(value), _lifeTime))!
+            );
     }
 
     /// <summary>
@@ -140,24 +102,22 @@ public class RedisSrvc : IRedisSrvc
     /// <param name="key">The key of the string.</param>
     /// <param name="value">The value to set.</param>
     /// <typeparam name="T">Type Of Object Stored In Db</typeparam>
-    /// <param name="dbNumber">database number Enum RedisDbEnum 0-15</param>
-    /// <returns></returns>
-    public T? SetAndGet<T>(RedisDbEnum dbNumber, string key, object value)
+    /// <param name="dbNumber">dbNumber Is Db 0 By Defult Except Change Defult In <see cref="ChangeDefultDb"/> </param>
+    /// <returns>The previous value stored at <paramref name="key"/>, or nil when key did not exist.</returns>
+    public T SetAndGet<T>(string key, object value, RedisDb dbNumber = RedisDb.DbDefult)
     {
-        var redis = GetRedisDatabase(dbNumber);
-        var lifeTime = GetRedisLifetime(dbNumber);
+        GetRedisDatabase(dbNumber);
+        GetRedisLifetime(dbNumber);
 
-        if (!string.IsNullOrEmpty(lifeTime))
-        {
-            return JsonConvert.DeserializeObject<T>(
-                redis.StringSetAndGet(key.ToString(), JsonConvert.SerializeObject(value), TimeSpan.Parse(lifeTime))!
-                );
-        }
-
-        return default;
+        return JsonConvert.DeserializeObject<T>(
+            redis.StringSetAndGet(key.ToString(), JsonConvert.SerializeObject(value), _lifeTime)!
+            );
     }
 
     #endregion
+
+    #endregion
+
 
     #region Key Operations
 
@@ -167,12 +127,12 @@ public class RedisSrvc : IRedisSrvc
     /// Removes the specified key. A key is ignored if it does not exist.
     /// If UNLINK is available (Redis 4.0+), it will be used.
     /// </summary>
-    /// <param name="dbNumber">database number Enum RedisDbEnum 0-15</param>
+    /// <param name="dbNumber">dbNumber Is Db 0 By Defult Except Change Defult In <see cref="ChangeDefultDb"/> </param>
     /// <param name="key">The key to delete.</param>
-    /// <returns></returns>
-    public bool KeyDelete(RedisDbEnum dbNumber, string key)
+    /// <returns><see langword="true"/> if the key was removed.</returns>
+    public bool KeyDelete(string key, RedisDb dbNumber = RedisDb.DbDefult)
     {
-        var redis = GetRedisDatabase(dbNumber);
+        GetRedisDatabase(dbNumber);
         return redis.KeyDelete(key);
     }
 
@@ -181,11 +141,11 @@ public class RedisSrvc : IRedisSrvc
     /// If UNLINK is available (Redis 4.0+), it will be used.
     /// </summary>
     /// <param name="key">The key to delete.</param>
-    /// <param name="dbNumber">database number Enum RedisDbEnum 0-15</param>
-    /// <returns></returns>
-    public async Task<bool> KeyDeleteAsync(RedisDbEnum dbNumber, string key)
+    /// <param name="dbNumber">dbNumber Is Db 0 By Defult Except Change Defult In <see cref="ChangeDefultDb"/> </param>
+    /// <returns><see langword="true"/> if the key was removed.</returns>
+    public async Task<bool> KeyDeleteAsync(string key, RedisDb dbNumber = RedisDb.DbDefult)
     {
-        var redis = GetRedisDatabase(dbNumber);
+        GetRedisDatabase(dbNumber);
         return await redis.KeyDeleteAsync(key);
     }
 
@@ -198,13 +158,13 @@ public class RedisSrvc : IRedisSrvc
     /// After the timeout has expired, the key will automatically be deleted.
     /// A key with an associated timeout is said to be volatile in Redis terminology.
     /// </summary>
-    /// <param name="dbNumber">database number Enum RedisDbEnum 0-15</param>
+    /// <param name="dbNumber">dbNumber Is Db 0 By Defult Except Change Defult In <see cref="ChangeDefultDb"/> </param>
     /// <param name="key">The key to delete.</param>
     /// <param name="lifeTime">The timeout to set.</param>
-    /// <returns></returns>
-    public bool KeyExpire(RedisDbEnum dbNumber, string key, TimeSpan lifeTime)
+    /// <returns><see langword="true"/> if the timeout was set. <see langword="false"/> if key does not exist or the timeout could not be set.</returns>
+    public bool KeyExpire(string key, TimeSpan lifeTime, RedisDb dbNumber = RedisDb.DbDefult)
     {
-        var redis = GetRedisDatabase(dbNumber);
+        GetRedisDatabase(dbNumber);
         return redis.KeyExpire(key, lifeTime);
     }
 
@@ -213,13 +173,13 @@ public class RedisSrvc : IRedisSrvc
     /// After the timeout has expired, the key will automatically be deleted.
     /// A key with an associated timeout is said to be volatile in Redis terminology.
     /// </summary>
-    /// <param name="dbNumber">database number Enum RedisDbEnum 0-15</param>
+    /// <param name="dbNumber">dbNumber Is Db 0 By Defult Except Change Defult In <see cref="ChangeDefultDb"/> </param>
     /// <param name="key">The key to delete.</param>
     /// <param name="lifeTime">The timeout to set.</param>
-    /// <returns></returns>
-    public async Task<bool> KeyExpireAsync(RedisDbEnum dbNumber, string key, TimeSpan lifeTime)
+    /// <returns><see langword="true"/> if the timeout was set. <see langword="false"/> if key does not exist or the timeout could not be set.</returns>
+    public async Task<bool> KeyExpireAsync(string key, TimeSpan lifeTime, RedisDb dbNumber = RedisDb.DbDefult)
     {
-        var redis = GetRedisDatabase(dbNumber);
+        GetRedisDatabase(dbNumber);
         return await redis.KeyExpireAsync(key, lifeTime);
     }
 
@@ -228,32 +188,26 @@ public class RedisSrvc : IRedisSrvc
     #region KeyExists
 
     /// <summary>
-    /// Set a timeout on <paramref name="key"/>.
-    /// After the timeout has expired, the key will automatically be deleted.
-    /// A key with an associated timeout is said to be volatile in Redis terminology.
+    /// Returns if key exists.
     /// </summary>
-    /// <param name="dbNumber">database number Enum RedisDbEnum 0-15</param>
-    /// <param name="key">The key to delete.</param>
-    /// <param name="lifeTime">The timeout to set.</param>
-    /// <returns></returns>
-    public bool KeyExists(RedisDbEnum dbNumber, string key)
+    /// <param name="key">The key to check.</param>
+    /// <param name="dbNumber">dbNumber Is Db 0 By Defult Except Change Defult In <see cref="ChangeDefultDb"/> </param>
+    /// <returns><see langword="true"/> if the key exists. <see langword="false"/> if the key does not exist.</returns>
+    public bool KeyExists(string key, RedisDb dbNumber = RedisDb.DbDefult)
     {
-        var redis = GetRedisDatabase(dbNumber);
+        GetRedisDatabase(dbNumber);
         return redis.KeyExists(key);
     }
 
     /// <summary>
-    /// Set a timeout on <paramref name="key"/>.
-    /// After the timeout has expired, the key will automatically be deleted.
-    /// A key with an associated timeout is said to be volatile in Redis terminology.
+    /// Returns if key exists.
     /// </summary>
-    /// <param name="dbNumber">database number Enum RedisDbEnum 0-15</param>
-    /// <param name="key">The key to delete.</param>
-    /// <param name="lifeTime">The timeout to set.</param>
-    /// <returns></returns>
-    public async Task<bool> KeyExistsAsync(RedisDbEnum dbNumber, string key)
+    /// <param name="key">The key to check.</param>
+    /// <param name="dbNumber">dbNumber Is Db 0 By Defult Except Change Defult In <see cref="ChangeDefultDb"/> </param>
+    /// <returns><see langword="true"/> if the key exists. <see langword="false"/> if the key does not exist.</returns>
+    public async Task<bool> KeyExistsAsync(string key, RedisDb dbNumber = RedisDb.DbDefult)
     {
-        var redis = GetRedisDatabase(dbNumber);
+        GetRedisDatabase(dbNumber);
         return await redis.KeyExistsAsync(key);
     }
 
@@ -265,12 +219,11 @@ public class RedisSrvc : IRedisSrvc
     /// Returns the absolute time at which the given <paramref name="key"/> will expire, if it exists and has an expiration.
     /// </summary>
     /// <param name="key">The key to get the expiration for.</param>
-    /// <param name="dbNumber">database number Enum RedisDbEnum 0-15</param>
-    /// <param name="lifeTime">The timeout to set.</param>
-    /// <returns></returns>
-    public DateTime? KeyExpireTime(RedisDbEnum dbNumber, string key)
+    /// <param name="dbNumber">dbNumber Is Db 0 By Defult Except Change Defult In <see cref="ChangeDefultDb"/> </param>
+    /// <returns>The time at which the given key will expire, or <see langword="null"/> if the key does not exist or has no associated expiration time.</returns>
+    public DateTime? KeyExpireTime(string key, RedisDb dbNumber = RedisDb.DbDefult)
     {
-        var redis = GetRedisDatabase(dbNumber);
+        GetRedisDatabase(dbNumber);
         return redis.KeyExpireTime(key);
     }
 
@@ -278,12 +231,11 @@ public class RedisSrvc : IRedisSrvc
     /// Returns the absolute time at which the given <paramref name="key"/> will expire, if it exists and has an expiration.
     /// </summary>
     /// <param name="key">The key to get the expiration for.</param>
-    /// <param name="dbNumber">database number Enum RedisDbEnum 0-15</param>
-    /// <param name="lifeTime">The timeout to set.</param>
-    /// <returns></returns>
-    public async Task<DateTime?> KeyExpireTimeAsync(RedisDbEnum dbNumber, string key)
+    /// <param name="dbNumber">dbNumber Is Db 0 By Defult Except Change Defult In <see cref="ChangeDefultDb"/> </param>
+    /// <returns>The time at which the given key will expire, or <see langword="null"/> if the key does not exist or has no associated expiration time.</returns>
+    public async Task<DateTime?> KeyExpireTimeAsync(string key, RedisDb dbNumber = RedisDb.DbDefult)
     {
-        var redis = GetRedisDatabase(dbNumber);
+        GetRedisDatabase(dbNumber);
         return await redis.KeyExpireTimeAsync(key);
     }
 
@@ -295,12 +247,12 @@ public class RedisSrvc : IRedisSrvc
     /// Returns the remaining time to live of a key that has a timeout.
     /// This introspection capability allows a Redis client to check how many seconds a given key will continue to be part of the dataset.
     /// </summary>
-    /// <param name="dbNumber">database number Enum RedisDbEnum 0-15</param>
+    /// <param name="dbNumber">dbNumber Is Db 0 By Defult Except Change Defult In <see cref="ChangeDefultDb"/> </param>
     /// <param name="key">The key to check.</param>
     /// <returns>TTL, or nil when key does not exist or does not have a timeout.</returns>
-    public TimeSpan? KeyTimeToLive(RedisDbEnum dbNumber, string key)
+    public TimeSpan? KeyTimeToLive(string key, RedisDb dbNumber = RedisDb.DbDefult)
     {
-        var redis = GetRedisDatabase(dbNumber);
+        GetRedisDatabase(dbNumber);
         return redis.KeyTimeToLive(key);
     }
 
@@ -308,12 +260,12 @@ public class RedisSrvc : IRedisSrvc
     /// Returns the remaining time to live of a key that has a timeout.
     /// This introspection capability allows a Redis client to check how many seconds a given key will continue to be part of the dataset.
     /// </summary>
-    /// <param name="dbNumber">database number Enum RedisDbEnum 0-15</param>
+    /// <param name="dbNumber">dbNumber Is Db 0 By Defult Except Change Defult In <see cref="ChangeDefultDb"/> </param>
     /// <param name="key">The key to check.</param>
     /// <returns>TTL, or nil when key does not exist or does not have a timeout.</returns>
-    public async Task<TimeSpan?> KeyTimeToLiveAsync(RedisDbEnum dbNumber, string key)
+    public async Task<TimeSpan?> KeyTimeToLiveAsync(string key, RedisDb dbNumber = RedisDb.DbDefult)
     {
-        var redis = GetRedisDatabase(dbNumber);
+        GetRedisDatabase(dbNumber);
         return await redis.KeyTimeToLiveAsync(key);
     }
 
@@ -329,9 +281,9 @@ public class RedisSrvc : IRedisSrvc
     /// <param name="srcDbNumber">The database ID to Copy <paramref name="srcKey"/> From.</param>
     /// <param name="destDbNumber">The database ID to store <paramref name="destKey"/> in.</param>
     /// <returns><see langword="true"/> if key was copied. <see langword="false"/> if key was not copied.</returns>
-    public bool KeyCopy(RedisDbEnum srcDbNumber, RedisDbEnum destDbNumber, string srcKey, string destKey)
+    public bool KeyCopy(string srcKey, string destKey, RedisDb destDbNumber, RedisDb srcDbNumber = RedisDb.DbDefult)
     {
-        var redis = GetRedisDatabase(srcDbNumber);
+        GetRedisDatabase(srcDbNumber);
         return redis.KeyCopy(srcKey, destKey, (int)destDbNumber);
     }
 
@@ -342,9 +294,9 @@ public class RedisSrvc : IRedisSrvc
     /// <param name="destKey">The destination key to copy the source to.</param>
     /// <param name="destDbNumber">The database ID to store <paramref name="destKey"/> in.</param>
     /// <returns><see langword="true"/> if key was copied. <see langword="false"/> if key was not copied.</returns>
-    public bool KeyCopy(RedisDbEnum srcDbNumber, string srcKey, string destKey)
+    public bool KeyCopy(RedisDb srcDbNumber, string srcKey, string destKey)
     {
-        var redis = GetRedisDatabase(srcDbNumber);
+        GetRedisDatabase(srcDbNumber);
         return redis.KeyCopy(srcKey, destKey);
     }
 
@@ -356,9 +308,9 @@ public class RedisSrvc : IRedisSrvc
     /// <param name="srcDbNumber">The database ID to Copy <paramref name="srcKey"/> From.</param>
     /// <param name="destDbNumber">The database ID to store <paramref name="destKey"/> in.</param>
     /// <returns><see langword="true"/> if key was copied. <see langword="false"/> if key was not copied.</returns>
-    public async Task<bool> KeyCopyAsync(RedisDbEnum srcDbNumber, RedisDbEnum destDbNumber, string srcKey, string destKey)
+    public async Task<bool> KeyCopyAsync(RedisDb srcDbNumber, RedisDb destDbNumber, string srcKey, string destKey)
     {
-        var redis = GetRedisDatabase(srcDbNumber);
+        GetRedisDatabase(srcDbNumber);
         return await redis.KeyCopyAsync(srcKey, destKey, (int)destDbNumber);
     }
 
@@ -369,9 +321,9 @@ public class RedisSrvc : IRedisSrvc
     /// <param name="destKey">The destination key to copy the source to.</param>
     /// <param name="destDbNumber">The database ID to store <paramref name="destKey"/> in.</param>
     /// <returns><see langword="true"/> if key was copied. <see langword="false"/> if key was not copied.</returns>
-    public async Task<bool> KeyCopyAsync(RedisDbEnum srcDbNumber, string srcKey, string destKey)
+    public async Task<bool> KeyCopyAsync(RedisDb srcDbNumber, string srcKey, string destKey)
     {
-        var redis = GetRedisDatabase(srcDbNumber);
+        GetRedisDatabase(srcDbNumber);
         return await redis.KeyCopyAsync(srcKey, destKey);
     }
 
@@ -388,9 +340,9 @@ public class RedisSrvc : IRedisSrvc
     /// <param name="destDbNumber">The database to move the key to.</param>
     /// <param name="srcDbNumber">The database ID to Copy <paramref name="srcKey"/> From.</param>
     /// <returns><see langword="true"/> if key was moved. <see langword="false"/> if key was not moved.</returns>
-    public bool KeyMove(RedisDbEnum srcDbNumber, RedisDbEnum destDbNumber, string key)
+    public bool KeyMove(RedisDb srcDbNumber, RedisDb destDbNumber, string key)
     {
-        var redis = GetRedisDatabase(srcDbNumber);
+        GetRedisDatabase(srcDbNumber);
         return redis.KeyMove(key, (int)destDbNumber);
     }
 
@@ -403,9 +355,9 @@ public class RedisSrvc : IRedisSrvc
     /// <param name="destDbNumber">The database to move the key to.</param>
     /// <param name="srcDbNumber">The database ID to Copy <paramref name="srcKey"/> From.</param>
     /// <returns><see langword="true"/> if key was moved. <see langword="false"/> if key was not moved.</returns>
-    public Task<bool> KeyMoveAsync(RedisDbEnum srcDbNumber, RedisDbEnum destDbNumber, string key)
+    public Task<bool> KeyMoveAsync(RedisDb srcDbNumber, RedisDb destDbNumber, string key)
     {
-        var redis = GetRedisDatabase(srcDbNumber);
+        GetRedisDatabase(srcDbNumber);
         return redis.KeyMoveAsync(key, (int)destDbNumber);
     }
 
@@ -413,7 +365,6 @@ public class RedisSrvc : IRedisSrvc
 
     #endregion
 
-    #endregion
 
     #region Hash Operstions
 
@@ -426,10 +377,10 @@ public class RedisSrvc : IRedisSrvc
     /// </summary>
     /// <param name="key">The key of the hash.</param>
     /// <param name="hashFields">The entries to set in the hash.</param>
-    /// <param name="dbNumber">database number Enum RedisDbEnum 0-15</param>
-    public void HashSet(RedisDbEnum dbNumber, string key, HashEntry[] hashFields)
+    /// <param name="dbNumber">dbNumber Is Db 0 By Defult Except Change Defult In <see cref="ChangeDefultDb"/> </param>
+    public void HashSet(string key, HashEntry[] hashFields, RedisDb dbNumber = RedisDb.DbDefult)
     {
-        var redis = GetRedisDatabase(dbNumber);
+        GetRedisDatabase(dbNumber);
 
         redis.HashSet(key, hashFields);
     }
@@ -441,10 +392,10 @@ public class RedisSrvc : IRedisSrvc
     /// </summary>
     /// <param name="key">The key of the hash.</param>
     /// <param name="hashFields">The entries to set in the hash.</param>
-    /// <param name="dbNumber">database number Enum RedisDbEnum 0-15</param>
-    public async Task HashSetAsync(RedisDbEnum dbNumber, string key, HashEntry[] hashFields)
+    /// <param name="dbNumber">dbNumber Is Db 0 By Defult Except Change Defult In <see cref="ChangeDefultDb"/> </param>
+    public async Task HashSetAsync(string key, HashEntry[] hashFields, RedisDb dbNumber = RedisDb.DbDefult)
     {
-        var redis = GetRedisDatabase(dbNumber);
+        GetRedisDatabase(dbNumber);
 
         await redis.HashSetAsync(key, hashFields);
     }
@@ -458,11 +409,12 @@ public class RedisSrvc : IRedisSrvc
     /// </summary>
     /// <param name="key">The key of the hash.</param>
     /// <param name="hashField">The field in the hash to get.</param>
-    /// <param name="dbNumber">database number Enum RedisDbEnum 0-15</param>
+    /// <typeparam name="T">Type Of Object Stored In Db</typeparam>
+    /// <param name="dbNumber">dbNumber Is Db 0 By Defult Except Change Defult In <see cref="ChangeDefultDb"/> </param>
     /// <returns>The value associated with field, or nil when field is not present in the hash or key does not exist.</returns>
-    public T? HashGet<T>(RedisDbEnum dbNumber, string key, string hashField)
+    public T HashGet<T>(string key, string hashField, RedisDb dbNumber = RedisDb.DbDefult)
     {
-        var redis = GetRedisDatabase(dbNumber);
+        GetRedisDatabase(dbNumber);
 
         return (T)Convert.ChangeType(redis.HashGet(key, hashField)!, typeof(T));
     }
@@ -472,11 +424,12 @@ public class RedisSrvc : IRedisSrvc
     /// </summary>
     /// <param name="key">The key of the hash.</param>
     /// <param name="hashField">The field in the hash to get.</param>
-    /// <param name="dbNumber">database number Enum RedisDbEnum 0-15</param>
+    /// <typeparam name="T">Type Of Object Stored In Db</typeparam>
+    /// <param name="dbNumber">dbNumber Is Db 0 By Defult Except Change Defult In <see cref="ChangeDefultDb"/> </param>
     /// <returns>The value associated with field, or nil when field is not present in the hash or key does not exist.</returns>
-    public async Task<T?> HashGetAsync<T>(RedisDbEnum dbNumber, string key, string hashField)
+    public async Task<T> HashGetAsync<T>(string key, string hashField, RedisDb dbNumber = RedisDb.DbDefult)
     {
-        var redis = GetRedisDatabase(dbNumber);
+        GetRedisDatabase(dbNumber);
 
         return (T)Convert.ChangeType(await redis.HashGetAsync(key, hashField)!, typeof(T));
     }
@@ -489,11 +442,12 @@ public class RedisSrvc : IRedisSrvc
     /// Returns all fields and values of the hash stored at key.
     /// </summary>
     /// <param name="key">The key of the hash to get all entries from.</param>
-    /// <param name="dbNumber">database number Enum RedisDbEnum 0-15</param>
+    /// <typeparam name="T">Type Of Object Stored In Db</typeparam>
+    /// <param name="dbNumber">dbNumber Is Db 0 By Defult Except Change Defult In <see cref="ChangeDefultDb"/> </param>
     /// <returns>List of fields and their values stored in the hash, or an empty list when key does not exist.</returns>
-    public T? HashGetAll<T>(RedisDbEnum dbNumber, string key)
+    public T HashGetAll<T>(string key, RedisDb dbNumber = RedisDb.DbDefult)
     {
-        var redis = GetRedisDatabase(dbNumber);
+        GetRedisDatabase(dbNumber);
 
         return (T)Convert.ChangeType(redis.HashGetAll(key)!, typeof(T));
     }
@@ -502,11 +456,12 @@ public class RedisSrvc : IRedisSrvc
     /// Returns the value associated with field in the hash stored at key.
     /// </summary>
     /// <param name="key">The key of the hash.</param>
-    /// <param name="dbNumber">database number Enum RedisDbEnum 0-15</param>
+    /// <typeparam name="T">Type Of Object Stored In Db</typeparam>
+    /// <param name="dbNumber">dbNumber Is Db 0 By Defult Except Change Defult In <see cref="ChangeDefultDb"/> </param>
     /// <returns>The value associated with field, or nil when field is not present in the hash or key does not exist.</returns>
-    public async Task<T?> HashGetAllAsync<T>(RedisDbEnum dbNumber, string key)
+    public async Task<T> HashGetAllAsync<T>(string key, RedisDb dbNumber = RedisDb.DbDefult)
     {
-        var redis = GetRedisDatabase(dbNumber);
+        GetRedisDatabase(dbNumber);
 
         return (T)Convert.ChangeType(await redis.HashGetAllAsync(key)!, typeof(T));
     }
@@ -519,11 +474,11 @@ public class RedisSrvc : IRedisSrvc
     /// Returns the number of fields contained in the hash stored at key.
     /// </summary>
     /// <param name="key">The key of the hash.</param>
-    /// <param name="dbNumber">database number Enum RedisDbEnum 0-15</param>
+    /// <param name="dbNumber">dbNumber Is Db 0 By Defult Except Change Defult In <see cref="ChangeDefultDb"/> </param>
     /// <returns>The number of fields in the hash, or 0 when key does not exist.</returns>
-    public long HashLength(RedisDbEnum dbNumber, string key)
+    public long HashLength(string key, RedisDb dbNumber = RedisDb.DbDefult)
     {
-        var redis = GetRedisDatabase(dbNumber);
+        GetRedisDatabase(dbNumber);
 
         return redis.HashLength(key);
     }
@@ -532,11 +487,11 @@ public class RedisSrvc : IRedisSrvc
     /// Returns the number of fields contained in the hash stored at key.
     /// </summary>
     /// <param name="key">The key of the hash.</param>
-    /// <param name="dbNumber">database number Enum RedisDbEnum 0-15</param>
+    /// <param name="dbNumber">dbNumber Is Db 0 By Defult Except Change Defult In <see cref="ChangeDefultDb"/> </param>
     /// <returns>The number of fields in the hash, or 0 when key does not exist.</returns>
-    public Task<long> HashLengthAsync(RedisDbEnum dbNumber, string key)
+    public Task<long> HashLengthAsync(string key, RedisDb dbNumber = RedisDb.DbDefult)
     {
-        var redis = GetRedisDatabase(dbNumber);
+        GetRedisDatabase(dbNumber);
 
         return redis.HashLengthAsync(key);
     }
@@ -544,6 +499,7 @@ public class RedisSrvc : IRedisSrvc
     #endregion
 
     #endregion
+
 
     #region Set Operstions
 
@@ -556,11 +512,11 @@ public class RedisSrvc : IRedisSrvc
     /// </summary>
     /// <param name="key">The key of the set.</param>
     /// <param name="value">The value to add to the set.</param>
-    /// <param name="dbNumber">database number Enum RedisDbEnum 0-15</param>
+    /// <param name="dbNumber">dbNumber Is Db 0 By Defult Except Change Defult In <see cref="ChangeDefultDb"/> </param>
     /// <returns><see langword="true"/> if the specified member was not already present in the set, else <see langword="false"/>.</returns>
-    public bool SetAdd(RedisDbEnum dbNumber, string key, object value)
+    public bool SetAdd(string key, object value, RedisDb dbNumber = RedisDb.DbDefult)
     {
-        var redis = GetRedisDatabase(dbNumber);
+        GetRedisDatabase(dbNumber);
 
         return redis.SetAdd(key, JsonConvert.SerializeObject(value));
     }
@@ -572,11 +528,11 @@ public class RedisSrvc : IRedisSrvc
     /// </summary>
     /// <param name="key">The key of the set.</param>
     /// <param name="value">The value to add to the set.</param>
-    /// <param name="dbNumber">database number Enum RedisDbEnum 0-15</param>
+    /// <param name="dbNumber">dbNumber Is Db 0 By Defult Except Change Defult In <see cref="ChangeDefultDb"/> </param>
     /// <returns><see langword="true"/> if the specified member was not already present in the set, else <see langword="false"/>.</returns>
-    public Task<bool> SetAddAsync(RedisDbEnum dbNumber, string key, object value)
+    public Task<bool> SetAddAsync(string key, object value, RedisDb dbNumber = RedisDb.DbDefult)
     {
-        var redis = GetRedisDatabase(dbNumber);
+        GetRedisDatabase(dbNumber);
 
         return redis.SetAddAsync(key, JsonConvert.SerializeObject(value));
     }
@@ -589,11 +545,11 @@ public class RedisSrvc : IRedisSrvc
     /// Returns all the members of the set value stored at key.
     /// </summary>
     /// <param name="key">The key of the set.</param>
-    /// <param name="dbNumber">database number Enum RedisDbEnum 0-15</param>
+    /// <param name="dbNumber">dbNumber Is Db 0 By Defult Except Change Defult In <see cref="ChangeDefultDb"/> </param>
     /// <returns>All elements of the set.</returns>
-    public RedisValue[] SetMembers(RedisDbEnum dbNumber, string key, object value)
+    public RedisValue[] SetMembers(string key, object value, RedisDb dbNumber = RedisDb.DbDefult)
     {
-        var redis = GetRedisDatabase(dbNumber);
+        GetRedisDatabase(dbNumber);
 
         return redis.SetMembers(key);
     }
@@ -602,11 +558,11 @@ public class RedisSrvc : IRedisSrvc
     /// Returns all the members of the set value stored at key.
     /// </summary>
     /// <param name="key">The key of the set.</param>
-    /// <param name="dbNumber">database number Enum RedisDbEnum 0-15</param>
+    /// <param name="dbNumber">dbNumber Is Db 0 By Defult Except Change Defult In <see cref="ChangeDefultDb"/> </param>
     /// <returns>All elements of the set.</returns>
-    public async Task<RedisValue[]> SetMembersAsync(RedisDbEnum dbNumber, string key, object value)
+    public async Task<RedisValue[]> SetMembersAsync(string key, RedisDb dbNumber = RedisDb.DbDefult)
     {
-        var redis = GetRedisDatabase(dbNumber);
+        GetRedisDatabase(dbNumber);
 
         return await redis.SetMembersAsync(key);
     }
@@ -619,11 +575,11 @@ public class RedisSrvc : IRedisSrvc
     /// Returns all the members of the set value stored at key.
     /// </summary>
     /// <param name="key">The key of the set.</param>
-    /// <param name="dbNumber">database number Enum RedisDbEnum 0-15</param>
+    /// <param name="dbNumber">dbNumber Is Db 0 By Defult Except Change Defult In <see cref="ChangeDefultDb"/> </param>
     /// <returns>All elements of the set.</returns>
-    public long SetLength(RedisDbEnum dbNumber, string key)
+    public long SetLength(string key, RedisDb dbNumber = RedisDb.DbDefult)
     {
-        var redis = GetRedisDatabase(dbNumber);
+        GetRedisDatabase(dbNumber);
 
         return redis.SetLength(key);
     }
@@ -632,11 +588,11 @@ public class RedisSrvc : IRedisSrvc
     /// Returns all the members of the set value stored at key.
     /// </summary>
     /// <param name="key">The key of the set.</param>
-    /// <param name="dbNumber">database number Enum RedisDbEnum 0-15</param>
+    /// <param name="dbNumber">dbNumber Is Db 0 By Defult Except Change Defult In <see cref="ChangeDefultDb"/> </param>
     /// <returns>All elements of the set.</returns>
-    public async Task<long> SetLengthAsync(RedisDbEnum dbNumber, string key)
+    public async Task<long> SetLengthAsync(string key, RedisDb dbNumber = RedisDb.DbDefult)
     {
-        var redis = GetRedisDatabase(dbNumber);
+        GetRedisDatabase(dbNumber);
 
         return await redis.SetLengthAsync(key);
     }
@@ -653,14 +609,14 @@ public class RedisSrvc : IRedisSrvc
     /// <param name="srcKey">The key of the source set.</param>
     /// <param name="destKey">The key of the destination set.</param>
     /// <param name="value">The value to move.</param>
-    /// <param name="dbNumber">database number Enum RedisDbEnum 0-15</param>
+    /// <param name="dbNumber">dbNumber Is Db 0 By Defult Except Change Defult In <see cref="ChangeDefultDb"/> </param>
     /// <returns>
     /// <see langword="true"/> if the element is moved.
     /// <see langword="false"/> if the element is not a member of source and no operation was performed.
     /// </returns>
-    public bool SetMove(RedisDbEnum dbNumber, string srcKey, string destKey, object value)
+    public bool SetMove(string srcKey, string destKey, object value, RedisDb dbNumber = RedisDb.DbDefult)
     {
-        var redis = GetRedisDatabase(dbNumber);
+        GetRedisDatabase(dbNumber);
 
         return redis.SetMove(srcKey, destKey, JsonConvert.SerializeObject(value));
     }
@@ -673,14 +629,14 @@ public class RedisSrvc : IRedisSrvc
     /// <param name="srcKey">The key of the source set.</param>
     /// <param name="destKey">The key of the destination set.</param>
     /// <param name="value">The value to move.</param>
-    /// <param name="dbNumber">database number Enum RedisDbEnum 0-15</param>
+    /// <param name="dbNumber">dbNumber Is Db 0 By Defult Except Change Defult In <see cref="ChangeDefultDb"/> </param>
     /// <returns>
     /// <see langword="true"/> if the element is moved.
     /// <see langword="false"/> if the element is not a member of source and no operation was performed.
     /// </returns>
-    public async Task<bool> SetMoveAsync(RedisDbEnum dbNumber, string srcKey, string destKey, object value)
+    public async Task<bool> SetMoveAsync(string srcKey, string destKey, object value, RedisDb dbNumber = RedisDb.DbDefult)
     {
-        var redis = GetRedisDatabase(dbNumber);
+        GetRedisDatabase(dbNumber);
 
         return await redis.SetMoveAsync(srcKey, destKey, JsonConvert.SerializeObject(value));
     }
@@ -693,11 +649,11 @@ public class RedisSrvc : IRedisSrvc
     /// Removes and returns a random element from the set value stored at key.
     /// </summary>
     /// <param name="key">The key of the set.</param>
-    /// <param name="dbNumber">database number Enum RedisDbEnum 0-15</param>
+    /// <param name="dbNumber">dbNumber Is Db 0 By Defult Except Change Defult In <see cref="ChangeDefultDb"/> </param>
     /// <returns>The removed element, or nil when key does not exist.</returns>
-    public string? SetPop(RedisDbEnum dbNumber, string srcKey)
+    public string SetPop(string srcKey, RedisDb dbNumber = RedisDb.DbDefult)
     {
-        var redis = GetRedisDatabase(dbNumber);
+        GetRedisDatabase(dbNumber);
 
         return redis.SetPop(srcKey);
     }
@@ -706,36 +662,16 @@ public class RedisSrvc : IRedisSrvc
     /// Removes and returns a random element from the set value stored at key.
     /// </summary>
     /// <param name="key">The key of the set.</param>
-    /// <param name="dbNumber">database number Enum RedisDbEnum 0-15</param>
+    /// <param name="dbNumber">dbNumber Is Db 0 By Defult Except Change Defult In <see cref="ChangeDefultDb"/> </param>
     /// <returns>The removed element, or nil when key does not exist.</returns>
-    public async Task<string?> SetPopAsync(RedisDbEnum dbNumber, string srcKey)
+    public async Task<string> SetPopAsync(string srcKey, RedisDb dbNumber = RedisDb.DbDefult)
     {
-        var redis = GetRedisDatabase(dbNumber);
+        GetRedisDatabase(dbNumber);
 
         return await redis.SetPopAsync(srcKey);
     }
 
     #endregion
-
-    #endregion
-
-    public void Dispose()
-    {
-        _redisConnection?.Dispose();
-    }
-
-    #region privates
-
-    private IDatabase GetRedisDatabase(RedisDbEnum dbNumber)
-    {
-        return _redisConnection.GetDatabase((int)dbNumber);
-    }
-
-    private string GetRedisLifetime(RedisDbEnum dbNumber)
-    {
-        return _configuration[$"Easy:Redis:LifeTime:{dbNumber}"]!;
-    }
-
 
     #endregion
 
