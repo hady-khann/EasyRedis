@@ -19,7 +19,7 @@ internal class DynamicLifeTime
         {
             if ((int)dbEnum >= 0)
             {
-                string configValue = _configuration[$"EasyRedis:LifeTime:{Enum.GetName(typeof(RedisDb), dbEnum)}"];
+                string configValue = _configuration.GetSection($"EasyRedis:LifeTime:{Enum.GetName(typeof(RedisDb), dbEnum)}").Value;
 
                 if (!string.IsNullOrEmpty(configValue) && TimeSpan.TryParseExact(configValue, "dd\\.hh\\:mm\\:ss", formatProvider, out TimeSpan timeSpan))
                 {

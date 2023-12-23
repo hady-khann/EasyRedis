@@ -36,10 +36,17 @@ public class RedisSrvc : BaseRedis, IRedisSrvc
     /// <returns><see langword="true"/> if the string was set, <see langword="false"/> otherwise.</returns>
     public async Task<bool> StringSetAsync(string key, object value, RedisDb dbNumber = RedisDb.DbDefult)
     {
-        GetRedisDatabase(dbNumber);
-        GetRedisLifetime(dbNumber);
+        try
+        {
+            GetRedisDatabase(dbNumber);
+            GetRedisLifetime(dbNumber);
 
-        return await redis.StringSetAsync(key, JsonConvert.SerializeObject(value), _lifeTime);
+            return await redis.StringSetAsync(key, JsonConvert.SerializeObject(value), _lifeTime);
+        }
+        catch (Exception rr)        
+        {
+            return default;
+        }
     }
 
     #endregion

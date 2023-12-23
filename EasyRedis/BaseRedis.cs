@@ -38,8 +38,7 @@ public abstract class BaseRedis : IBaseRedis,IDisposable
             EndPoints = { _configuration["EasyRedis:EndPoints"] },
             Password = _configuration["EasyRedis:Password"],
             ConnectTimeout = int.Parse(_configuration["EasyRedis:ConnectTimeout"]),
-            AbortOnConnectFail = bool.Parse(_configuration["EasyRedis:AbortOnConnectFail"]),
-            Ssl = bool.Parse(_configuration["EasyRedis:Ssl"]),
+            AbortOnConnectFail = bool.Parse(_configuration["EasyRedis:AbortOnConnectFail"]),            
             AllowAdmin = bool.Parse(_configuration["EasyRedis:AllowAdmin"])
         };
     }
