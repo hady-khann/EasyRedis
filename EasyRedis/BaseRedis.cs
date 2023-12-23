@@ -2,7 +2,7 @@
 using StackExchange.Redis;
 
 namespace EasyRedis;
-public abstract class BaseRedis : IBaseRedis,IDisposable
+public abstract class BaseRedis : IBaseRedis, IDisposable
 {
     private readonly IConfiguration _configuration;
     private RedisDb _defultDb = RedisDb.Db0;
@@ -10,6 +10,7 @@ public abstract class BaseRedis : IBaseRedis,IDisposable
     private RedisDb? _currentDb;
     private bool disposed = false;
 
+    internal IDatabase redis { get; set; }
     internal TimeSpan? _lifeTime;
 
     /// <summary>
@@ -18,17 +19,13 @@ public abstract class BaseRedis : IBaseRedis,IDisposable
     /// </summary>
     public ConnectionMultiplexer redisConnection { get; set; }
 
-    /// <summary>
-    /// Can Access Redis Defults
-    /// </summary>
-    public IDatabase redis { get; set; }
 
     protected BaseRedis(IConfiguration configuration)
     {
         _configuration = configuration;
+        _dynamicLifeTime = new(configuration);
         redisConnection = ConnectionMultiplexer.Connect(GetRedisConfiguration());
         GetRedisDatabase(RedisDb.DbDefult);
-        _dynamicLifeTime = new(configuration);
     }
 
     private ConfigurationOptions GetRedisConfiguration()
@@ -38,7 +35,7 @@ public abstract class BaseRedis : IBaseRedis,IDisposable
             EndPoints = { _configuration["EasyRedis:EndPoints"] },
             Password = _configuration["EasyRedis:Password"],
             ConnectTimeout = int.Parse(_configuration["EasyRedis:ConnectTimeout"]),
-            AbortOnConnectFail = bool.Parse(_configuration["EasyRedis:AbortOnConnectFail"]),            
+            AbortOnConnectFail = bool.Parse(_configuration["EasyRedis:AbortOnConnectFail"]),
             AllowAdmin = bool.Parse(_configuration["EasyRedis:AllowAdmin"])
         };
     }
@@ -59,11 +56,21 @@ public abstract class BaseRedis : IBaseRedis,IDisposable
     /// To Set A Defult Db And Other Methods Will Use This Db By Defult Except Choose Db While Using Them
     /// </summary>
     /// <param name="dbNumber">database number Enum RedisDbEnum 0-15</param>
-    public BaseRedis SetDefultDb(RedisDb dbNumber)
+    public RedisSrvc SetDefultDb(RedisDb dbNumber)
     {
         _defultDb = dbNumber;
         GetRedisDatabase(dbNumber);
         return default;
+    }
+
+    /// <summary>
+    /// Directly Use Redis
+    /// </summary>
+    /// <param name="dbNumber">database number Enum RedisDbEnum 0-15</param>
+    public IDatabase UseRedis(RedisDb dbNumber)
+    {
+        GetRedisDatabase(dbNumber);
+        return redis;
     }
 
     /// <summary>
@@ -73,7 +80,7 @@ public abstract class BaseRedis : IBaseRedis,IDisposable
     /// <param name="dbNumber">database number Enum RedisDbEnum 0-15</param>
     /// <param name="lifeTime">Db LifeTime</param>
     /// <returns></returns>
-    public BaseRedis SetDbLifeTime(RedisDb dbNumber, TimeSpan lifeTime)
+    public RedisSrvc SetDbLifeTime(RedisDb dbNumber, TimeSpan lifeTime)
     {
         _dynamicLifeTime.dbs[dbNumber] = lifeTime;
         return default;
@@ -86,7 +93,7 @@ public abstract class BaseRedis : IBaseRedis,IDisposable
     /// <param name="dbNumber">database number Enum RedisDbEnum 0-15</param>
     /// <param name="lifeTime">Db LifeTime</param>
     /// <returns></returns>
-    public BaseRedis SetDbLifeTime(Dictionary<RedisDb, TimeSpan> dbs)
+    public RedisSrvc SetDbLifeTime(Dictionary<RedisDb, TimeSpan> dbs)
     {
         _dynamicLifeTime.dbs = dbs;
         return default;
@@ -96,7 +103,7 @@ public abstract class BaseRedis : IBaseRedis,IDisposable
     /// After Calling <see cref="SetDbLifeTime"/> Can Call This Method To Use Th Defults Again
     /// </summary>
     /// <returns></returns>
-    public BaseRedis SetDefultDbLifeTime()
+    public RedisSrvc SetDefultDbLifeTime()
     {
         _dynamicLifeTime.Init();
         return default;

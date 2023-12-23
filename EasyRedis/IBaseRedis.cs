@@ -3,13 +3,13 @@
 namespace EasyRedis;
 public interface IBaseRedis
 {
-    IDatabase redis { get; set; }
     ConnectionMultiplexer redisConnection { get; set; }
 
     void Dispose();
-    BaseRedis SetDbLifeTime(Dictionary<RedisDb, TimeSpan> dbs);
-    BaseRedis SetDbLifeTime(RedisDb dbNumber, TimeSpan lifeTime);
-    BaseRedis SetDefultDb(RedisDb dbNumber);
-    BaseRedis SetDefultDbLifeTime();
+    RedisSrvc SetDbLifeTime(Dictionary<RedisDb, TimeSpan> dbs);
+    RedisSrvc SetDbLifeTime(RedisDb dbNumber, TimeSpan lifeTime);
+    RedisSrvc SetDefultDb(RedisDb dbNumber);
+    RedisSrvc SetDefultDbLifeTime();
     void SetRedisConfiguration(ConfigurationOptions config);
+    IDatabase UseRedis(RedisDb dbNumber);
 }
