@@ -25,10 +25,6 @@ internal class DynamicLifeTime
                 {
                     dbs.Add(dbEnum, timeSpan);
                 }
-                else
-                {
-                    throw new ArgumentException($"EasyRedis:LifeTime:{Enum.GetName(typeof(RedisDb), dbEnum)} Not Found");
-                }
             }
         }
     }
